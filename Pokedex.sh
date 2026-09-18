@@ -6,7 +6,7 @@
 #   ./pokedex.sh <nombre-pokemon>
 #
 # Salida:
-#   id,nombre,altura   (si existe)
+#   id:(id), nombre:(nombre), altura:(altura)   (si existe)
 #   "No encontrado" y sale con código 1 (si no existe, HTTP 404)
 
 set -euo pipefail
@@ -33,4 +33,4 @@ elif [ "$http_code" != "200" ]; then
     exit 1
 fi
 
-jq -r '[.id, .name, .height] | @csv' "$respuesta_tmp"
+jq -r '"id:" + (.id|tostring) + ", nombre:" + .name + ", altura:" + (.height|tostring) + "dm"' "$respuesta_tmp"
