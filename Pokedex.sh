@@ -36,7 +36,7 @@ def main():  # Define la función principal del programa.
                 name = data['name'].capitalize()  # Obtiene el nombre y pone su primera letra en mayúscula.
                 types = [t['type']['name'] for t in data['types']]  # Extrae el nombre de cada tipo del Pokémon.
                 types_str = ", ".join(types)  # Une los tipos en una sola cadena separada por comas.
-                abilities = [a['ability']['name'] for a in data['abilities']]  # Extrae el nombre de cada habilidad del Pokémon.
+                abilities = [a['ability']['name'] for a in data['abilities']  # Extrae el nombre de cada habilidad del Pokémon.
                 abilities_str = ", ".join(abilities)  # Une las habilidades en una sola cadena separada por comas.
 
                 print(f"\n{name}")  # Muestra el nombre del Pokémon consultado.
