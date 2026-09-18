@@ -9,7 +9,7 @@ fi
 
 API="https://pokeapi.co/api/v2"
 DIR="data"
-mkdir -p "$DIR"
+mkdir -p "$DIR" 
 
 bajar() {
   local c
