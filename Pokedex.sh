@@ -34,4 +34,7 @@ elif [ "$http_code" != "200" ]; then # Comprueba si ocurrio otro error HTTP.
     exit 1 # Termina indicando que la consulta fallo.
 fi
 
-jq -r '"id:" + (.id|tostring) + ", nombre:" + .name + ", altura:" + (.height|tostring) + "dm"' "$respuesta_tmp" # Extrae y muestra id, nombre y altura del JSON.
+id="$(sed -n 's/.*"id":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$respuesta_tmp")" # Extrae el identificador desde el JSON.
+nombre_api="$(sed -n 's/.*"name":[[:space:]]*"\([^"]*\)".*/\1/p' "$respuesta_tmp")" # Extrae el nombre desde el JSON.
+altura="$(sed -n 's/.*"height":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$respuesta_tmp")" # Extrae la altura desde el JSON.
+printf 'id:%s, nombre:%s, altura:%sdm\n' "$id" "$nombre_api" "$altura" # Muestra los datos del Pokemon.
