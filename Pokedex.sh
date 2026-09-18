@@ -11,6 +11,11 @@ if [ "$#" -gt 1 ]; then                                  # se pasaron 2 o mas
   echo "Error: ingresa solo el nombre del pokemon."      # mismo mensaje
   exit 2                                                 # cancela la busqueda
 fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: falta jq. Instalalo con: sudo apt update && sudo apt install jq" >&2
+  exit 127
+fi
  
 API="https://pokeapi.co/api/v2"          # base de la PokeAPI
 DIR="data"                               # carpeta cache de los json
