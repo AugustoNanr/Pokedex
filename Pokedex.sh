@@ -1,80 +1,101 @@
 #!/usr/bin/env bash
-# Pokedex.sh - imprime "Id, Nombre y Peso" de un pokemon (peso en kg)
-# Uso: ./Pokedex.sh pikachu   |   ./Pokedex.sh --sync   |   ./Pokedex.sh --top-heavy
+# Pokedex.sh - Muestra Nombre, Peso en kg y Ranking general de peso.
+# Uso: ./Pokedex.sh snorlax | ./Pokedex.sh --sync
 
-# --- Validacion: exactamente un argumento -------------------------------
-if [ "$#" -eq 0 ]; then                                 # no se paso nada
-  echo "Error: ingresa solo el nombre del pokemon o una opcion (--sync, --top-heavy)."      # avisa al usuario
-  exit 2                                                # cancela la busqueda
-fi
-if [ "$#" -gt 1 ]; then                                 # se pasaron 2 o mas
-  echo "Error: ingresa solo un argumento."              # mismo mensaje
-  exit 2                                                # cancela la busqueda
+if [ "$#" -ne 1 ]; then
+  echo "Error: ingresa solo el nombre de un pokemon o la opcion --sync."
+  exit 2
 fi
 
-API="https://pokeapi.co/api/v2"          # base de la PokeAPI
-DIR="data"                               # carpeta cache de los json
-mkdir -p "$DIR"                          # la crea si no existe
+API="https://pokeapi.co/api/v2"
+DIR="data"
+mkdir -p "$DIR"
 
-# Descarga $1 en el archivo $2 y devuelve el codigo HTTP (000 = fallo de red)
 bajar() {
-  local c                                                        # codigo HTTP
-  c=$(curl -sS -m 15 -w '%{http_code}' -o "$2" "$1" 2>/dev/null) # intento 1
-  [ -z "$c" ] || [ "$c" = "000" ] && sleep 0.2 &&                # si fallo la red, pausa
-    c=$(curl -sS -m 15 -w '%{http_code}' -o "$2" "$1" 2>/dev/null) # unico reintento
-  echo "${c:-000}"                                               # devuelve el codigo
+  local c
+  c=$(curl -sS -m 15 -w '%{http_code}' -o "$2" "$1" 2>/dev/null)
+  [ -z "$c" ] || [ "$c" = "000" ] && sleep 0.2 &&
+    c=$(curl -sS -m 15 -w '%{http_code}' -o "$2" "$1" 2>/dev/null)
+  echo "${c:-000}"
 }
 
-# Imprime el registro en una sola linea, con el peso convertido a kg
-mostrar() {
-  sed -n 's/.*"id":\([0-9][0-9]*\),"name":"\([^"]*\)".*"weight":\([0-9][0-9]*\).*/\1, \2, \3/p' "$1" |
-    awk -F', ' '{ printf "Identificador de pokemon: \"%s\", \"%s\" con un peso de \"%.1f kg\".\n", $1, $2, $3 / 10 }'
-}
-
-# --- Modo --sync: descarga los 151 originales ---------------------------
-if [ "$1" = "--sync" ]; then                       # si el argumento es --sync
-  lista=$(mktemp)                                   # temporal para el indice
-  bajar "$API/pokemon?limit=151" "$lista" >/dev/null # baja la lista de nombres
-  for n in $(grep -o '"name":"[^"]*"' "$lista" | sed 's/"name":"//;s/"$//'); do # recorre los 151 nombres
-    [ -s "$DIR/$n.json" ] && continue              # si ya existe, no lo descarga
-    [ "$(bajar "$API/pokemon/$n" "$DIR/$n.json")" = "200" ] ||  # intenta bajarlo
-      rm -f "$DIR/$n.json"                         # si fallo, borra el parcial
-    sleep 0.2                                      # pausa de 0.2 s entre peticiones
+# --- Modo --sync ---------------------------------------------------------
+if [ "$1" = "--sync" ]; then
+  lista=$(mktemp)
+  bajar "$API/pokemon?limit=151" "$lista" >/dev/null
+  for n in $(grep -o '"name":"[^"]*"' "$lista" | sed 's/"name":"//;s/"$//'); do
+    [ -s "$DIR/$n.json" ] && continue
+    [ "$(bajar "$API/pokemon/$n" "$DIR/$n.json")" = "200" ] || rm -f "$DIR/$n.json"
+    sleep 0.2
   done
-  rm -f "$lista"                                   # limpia el temporal
-  exit 0                                           # termina bien
-fi
-
-# --- Modo --top-heavy: Muestra los 10 pokemon mas pesados en cache -------
-if [ "$1" = "--top-heavy" ] || [ "$1" = "--top10" ]; then
-  # Comprobar si hay datos guardados en la carpeta cache
-  shopt -s nullglob
-  archivos=("$DIR"/*.json)
-  if [ ${#archivos[@]} -eq 0 ]; then
-    echo "No hay datos guardados en cache. Ejecuta primero './Pokedex.sh --sync' para descargar los pokemon."
-    exit 1
-  fi
-
-  echo "=========================================="
-  echo "      TOP 10 POKÉMON MÁS PESADOS         "
-  echo "=========================================="
-  
-  # Extrae id, nombre y peso de cada JSON, ordena numéricamente por el peso y toma los 10 primeros
-  for f in "${archivos[@]}"; do
-    sed -n 's/.*"id":\([0-9][0-9]*\),"name":"\([^"]*\)".*"weight":\([0-9][0-9]*\).*/\1 \2 \3/p' "$f"
-  done | sort -k3 -nr | head -n 10 | awk '{ printf "#%-3s %-15s %6.1f kg\n", $1, $2, $3/10 }'
-  
-  echo "=========================================="
+  rm -f "$lista"
   exit 0
 fi
 
 # --- Busqueda del pokemon ------------------------------------------------
-name=$(echo "$1" | tr 'A-Z' 'a-z')                 # normaliza a minusculas
-file="$DIR/$name.json"                             # ruta del cache
+name=$(echo "$1" | tr 'A-Z' 'a-z')
+file="$DIR/$name.json"
 
-[ -s "$file" ] && { mostrar "$file"; exit 0; }     # si esta en cache, lo usa
+if [ ! -s "$file" ]; then
+  code=$(bajar "$API/pokemon/$name" "$file")
+  if [ "$code" = "404" ]; then
+    rm -f "$file"
+    echo "Pokemon no encontrado."
+    exit 1
+  elif [ "$code" != "200" ]; then
+    rm -f "$file"
+    echo "Error de conexion (HTTP $code)."
+    exit 1
+  fi
+fi
 
-code=$(bajar "$API/pokemon/$name" "$file")         # consulta a la API
-[ "$code" = "404" ] && { rm -f "$file"; echo "No encontrado"; exit 1; }    # no existe
-[ "$code" = "200" ] || { rm -f "$file"; echo "Error HTTP $code"; exit 1; } # otro error
-mostrar "$file"                                    # imprime id, nombre y peso
+# Procesamiento exacto en Python evitando errores de sintaxis JSON
+python3 - "$file" "$DIR" << 'EOF'
+import sys
+import os
+import json
+
+target_file = sys.argv[1]
+data_dir = sys.argv[2]
+
+# Cargar el pokemon objetivo
+try:
+    with open(target_file, 'r', encoding='utf-8') as f:
+        target_data = json.load(f)
+        target_name = target_data['name'].lower()
+        target_weight = target_data['weight']
+except Exception as e:
+    print("Error al leer el archivo del pokemon consultado.")
+    sys.exit(1)
+
+# Cargar la lista completa de la cache
+pokemons = []
+for filename in os.listdir(data_dir):
+    if filename.endswith(".json"):
+        filepath = os.path.join(data_dir, filename)
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                d = json.load(f)
+                if 'name' in d and 'weight' in d:
+                    pokemons.append({
+                        'name': d['name'].lower(),
+                        'weight': d['weight']
+                    })
+        except Exception:
+            continue
+
+# Ordenar de mayor a menor peso
+pokemons.sort(key=lambda x: x['weight'], reverse=True)
+
+total = len(pokemons)
+rank = 1
+for i, p in enumerate(pokemons, start=1):
+    if p['name'] == target_name:
+        rank = i
+        break
+
+weight_kg = target_weight / 10.0
+print(f"Nombre: {target_name}")
+print(f"Peso: {weight_kg:.1f} kg")
+print(f"Ranking de peso: #{rank} de {total}")
+EOF
