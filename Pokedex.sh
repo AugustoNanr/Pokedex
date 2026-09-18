@@ -36,7 +36,7 @@ while true; do # Repite el menú hasta que el usuario decida salir.
         echo "Error al consultar la API (Código: $http_code)." # Muestra el código del error recibido.
         echo # Deja una línea en blanco.
         continue # Regresa al menú para realizar otra consulta.
-    fi # Finaliza la comprobación de errores de consulta.
+    fi # Finaliza la comprobación de errores de consulta y mas.
 
     name=$(printf '%s' "$data" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n 1 | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)"/\1/') # Extrae el nombre del Pokémon.
     name="${name^}" # Convierte la primera letra del nombre a mayúscula.
