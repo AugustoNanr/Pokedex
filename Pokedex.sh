@@ -12,11 +12,6 @@ if [ "$#" -gt 1 ]; then                                  # se pasaron 2 o mas
   exit 2                                                 # cancela la busqueda
 fi
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo "Error: falta jq. Instalalo con: sudo apt update && sudo apt install jq" >&2
-  exit 127
-fi
- 
 API="https://pokeapi.co/api/v2"          # base de la PokeAPI
 DIR="data"                               # carpeta cache de los json
 mkdir -p "$DIR"                          # la crea si no existe
@@ -32,14 +27,15 @@ bajar() {
  
 # Imprime el registro en una sola linea, con el peso convertido a kg
 mostrar() {
-  jq -r '"\(.id), \(.name), \(.weight/10) kg"' "$1"  # hectogramos /10 = kg
+  sed -n 's/.*"id":\([0-9][0-9]*\),"name":"\([^"]*\)".*"weight":\([0-9][0-9]*\).*/\1, \2, \3/p' "$1" |
+    awk -F', ' '{ printf "Identificador de pokemon: \"%s\", \"%s\" con un peso de \"%.1f kg\".\n", $1, $2, $3 / 10 }'
 }
  
 # --- Modo --sync: descarga los 151 originales ---------------------------
 if [ "$1" = "--sync" ]; then                       # si el argumento es --sync
   lista=$(mktemp)                                  # temporal para el indice
   bajar "$API/pokemon?limit=151" "$lista" >/dev/null # baja la lista de nombres
-  for n in $(jq -r '.results[].name' "$lista"); do # recorre los 151 nombres
+  for n in $(grep -o '"name":"[^"]*"' "$lista" | sed 's/"name":"//;s/"$//'); do # recorre los 151 nombres
     [ -s "$DIR/$n.json" ] && continue              # si ya existe, no lo descarga
     [ "$(bajar "$API/pokemon/$n" "$DIR/$n.json")" = "200" ] ||  # intenta bajarlo
       rm -f "$DIR/$n.json"                         # si fallo, borra el parcial
