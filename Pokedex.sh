@@ -37,4 +37,4 @@ fi
 id="$(sed -n 's/.*"id":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$respuesta_tmp")" # Extrae el identificador desde el JSON.
 nombre_api="$(sed -n 's/.*"name":[[:space:]]*"\([^"]*\)".*/\1/p' "$respuesta_tmp")" # Extrae el nombre desde el JSON.
 altura="$(sed -n 's/.*"height":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$respuesta_tmp")" # Extrae la altura desde el JSON.
-printf 'id:%s, nombre:%s, altura:%sdm\n' "$id" "$nombre_api" "$altura" # Muestra los datos del Pokemon.
+printf 'Identificador de pokemon: "%s", nombre del pokemon: "%s", altura: "%sdm"\n' "$id" "$nombre_api" "$altura" # Muestra el identificador y el nombre del Pokemon.
